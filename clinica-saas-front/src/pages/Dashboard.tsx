@@ -1,153 +1,207 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
-import { Users, Calendar, Clock, Activity } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { Users, Calendar, DollarSign, ArrowUpRight, Clock, FileText, TrendingUp, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const [pacientes, setPacientes] = useState<any[]>([]);
-  const [consultas, setConsultas] = useState<any[]>([]);
+  const navigate = useNavigate();
+  
+  const [stats, setStats] = useState({
+    totalPacientes: 0,
+    consultasHoje: 0,
+    faturamentoMes: 0
+  });
+  const [proximasConsultas, setProximasConsultas] = useState<any[]>([]);
+  const [ultimasMovimentacoes, setUltimasMovimentacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // NOTA: Em produção, o tenant_id virá do login do utilizador.
-  // Para testes, coloque o ID da clínica que está a usar no backend.
-  const tenantId = "COLOQUE_AQUI_O_SEU_TENANT_ID";
-
   useEffect(() => {
-    async function carregarDados() {
-      setLoading(true);
-
-      // 1. Buscar Pacientes
-      const { data: dadosPacientes } = await supabase
-        .from("pacientes")
-        .select("*")
-        .eq("tenant_id", tenantId)
-        .order("criado_em", { ascending: false });
-
-      if (dadosPacientes) setPacientes(dadosPacientes);
-
-      // 2. Buscar Consultas (Agenda)
-      const { data: dadosConsultas } = await supabase
-        .from("consultas")
-        .select(
-          `
-          *,
-          pacientes (nome, cpf)
-        `,
-        )
-        .eq("tenant_id", tenantId)
-        .order("data_hora", { ascending: true });
-
-      if (dadosConsultas) setConsultas(dadosConsultas);
-
-      setLoading(false);
-    }
-
-    carregarDados();
+    buscarDadosDashboard();
   }, []);
 
+  async function buscarDadosDashboard() {
+    setLoading(true);
+    const hoje = new Date().toISOString().split('T')[0];
+    const primeiroDiaMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+    // 1. Total de Pacientes
+    const { count: contagemPacientes } = await supabase
+      .from('pacientes')
+      .select('*', { count: 'exact', head: true });
+
+    // 2. Consultas de Hoje
+    const { count: contagemHoje } = await supabase
+      .from('consultas')
+      .select('*', { count: 'exact', head: true })
+      .gte('data_hora', `${hoje}T00:00:00`)
+      .lte('data_hora', `${hoje}T23:59:59`);
+
+    // 3. Faturamento do Mês (Somente o que foi Pago)
+    const { data: faturamentosMes } = await supabase
+      .from('faturamentos')
+      .select('valor')
+      .eq('status', 'Pago')
+      .gte('data_pagamento', primeiroDiaMes);
+
+    const totalFaturado = faturamentosMes?.reduce((acc, curr) => acc + Number(curr.valor), 0) || 0;
+
+    // 4. Próximos Atendimentos de Hoje
+    const { data: proximas } = await supabase
+      .from('consultas')
+      .select('id_consulta, data_hora, tipo_atendimento, pacientes(nome)')
+      .gte('data_hora', `${hoje}T00:00:00`)
+      .lte('data_hora', `${hoje}T23:59:59`)
+      .order('data_hora', { ascending: true })
+      .limit(5);
+
+    // 5. Últimas Movimentações Financeiras
+    const { data: movs } = await supabase
+      .from('faturamentos')
+      .select('id_faturamento, valor, data_emissao, status, pacientes(nome)')
+      .order('data_emissao', { ascending: false })
+      .limit(5);
+
+    setStats({
+      totalPacientes: contagemPacientes || 0,
+      consultasHoje: contagemHoje || 0,
+      faturamentoMes: totalFaturado
+    });
+    setProximasConsultas(proximas || []);
+    setUltimasMovimentacoes(movs || []);
+    setLoading(false);
+  }
+
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <header className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Activity className="text-blue-600" />
-            Facility <span className="text-gray-400 font-light">| Health</span>
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Gestão de Consultório e Agendamentos
-          </p>
+    <div className="w-full space-y-8 animate-in fade-in duration-500">
+      
+      {/* 1. KPIs SUPERIORES */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Card Total Pacientes */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Total de Pacientes</p>
+            <h2 className="text-4xl font-black text-gray-900">{stats.totalPacientes}</h2>
+          </div>
+          <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+            <Users size={28} />
+          </div>
         </div>
-      </header>
 
-      {loading ? (
-        <p className="text-gray-500 animate-pulse">
-          A carregar dados do consultório...
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* PAINEL DE PACIENTES */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-5 bg-blue-50/50 border-b border-gray-100 flex items-center gap-2">
-              <Users className="text-blue-600" size={20} />
-              <h2 className="text-lg font-semibold text-gray-800">
-                Pacientes Recentes
-              </h2>
-            </div>
+        {/* Card Consultas Hoje */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Consultas de Hoje</p>
+            <h2 className="text-4xl font-black text-gray-900">{stats.consultasHoje}</h2>
+          </div>
+          <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
+            <Calendar size={28} />
+          </div>
+        </div>
 
-            <div className="p-5">
-              {pacientes.length === 0 ? (
-                <p className="text-gray-500 text-sm">
-                  Nenhum paciente registado.
-                </p>
-              ) : (
-                <ul className="divide-y divide-gray-50">
-                  {pacientes.map((p) => (
-                    <li
-                      key={p.id}
-                      className="py-3 flex justify-between items-center"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {p.nome || "Nome pendente"}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          CPF: {p.cpf || "A aguardar envio..."}
-                        </p>
+        {/* Card Faturamento Mensal */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Faturamento (Mês)</p>
+            <h2 className="text-3xl font-black text-green-600">{formatarMoeda(stats.faturamentoMes)}</h2>
+          </div>
+          <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center">
+            <TrendingUp size={28} />
+          </div>
+        </div>
+
+      </div>
+
+      {/* 2. CONTEÚDO PRINCIPAL (GRID 2/3 e 1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Próximos Atendimentos */}
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              Próximos Atendimentos de Hoje
+            </h3>
+            <span className="bg-blue-50 text-blue-600 px-4 py-1 rounded-full text-sm font-bold">
+              {new Date().toLocaleDateString('pt-BR')}
+            </span>
+          </div>
+          
+          <div className="p-6">
+            {proximasConsultas.length === 0 ? (
+              <div className="py-20 text-center">
+                <Calendar className="mx-auto text-gray-200 mb-4" size={64} />
+                <p className="text-gray-400 font-medium">Nenhum paciente agendado para o dia de hoje.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {proximasConsultas.map((consulta) => (
+                  <div 
+                    key={consulta.id_consulta} 
+                    onClick={() => navigate('/agenda')}
+                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 cursor-pointer rounded-2xl border border-gray-100 transition duration-200 group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-blue-600 font-bold group-hover:bg-blue-600 group-hover:text-white transition">
+                        {new Date(consulta.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                        {p.phone_number}
+                      <div>
+                        <p className="font-bold text-gray-900">{consulta.pacientes?.nome}</p>
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-tighter">{consulta.tipo_atendimento || 'Consulta Geral'}</p>
+                      </div>
+                    </div>
+                    <ArrowUpRight className="text-gray-300 group-hover:text-blue-600 transition" size={20} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Últimas Movimentações Financeiras */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-50">
+            <h3 className="text-xl font-bold text-gray-900">Últimas Movimentações Financeiras</h3>
+          </div>
+          
+          <div className="p-6">
+            <div className="space-y-6">
+              {ultimasMovimentacoes.length === 0 ? (
+                <p className="text-center text-gray-400 py-10">Nenhuma movimentação.</p>
+              ) : (
+                ultimasMovimentacoes.map((mov) => (
+                  <div key={mov.id_faturamento} className="flex flex-col gap-1 border-b border-gray-50 pb-4 last:border-0 last:pb-0">
+                    <p className="font-bold text-gray-900">{mov.pacientes?.nome || 'Paciente Avulso'}</p>
+                    <p className="text-xs text-gray-400 font-medium">
+                      {new Date(mov.data_emissao).toLocaleDateString('pt-BR')}
+                    </p>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className={`text-sm font-bold ${mov.status === 'Pago' ? 'text-green-600' : 'text-orange-500'}`}>
+                        {formatarMoeda(mov.valor)}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {/* PAINEL DE AGENDA */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-5 bg-purple-50/50 border-b border-gray-100 flex items-center gap-2">
-              <Calendar className="text-purple-600" size={20} />
-              <h2 className="text-lg font-semibold text-gray-800">
-                Agenda de Consultas
-              </h2>
-            </div>
-            <div className="p-5">
-              {consultas.length === 0 ? (
-                <p className="text-gray-500 text-sm">
-                  Nenhuma consulta agendada.
-                </p>
-              ) : (
-                <ul className="divide-y divide-gray-50">
-                  {consultas.map((c) => (
-                    <li key={c.id} className="py-4 flex gap-4">
-                      <div className="flex flex-col items-center justify-center bg-gray-50 rounded-lg p-3 min-w-[80px]">
-                        <Clock size={18} className="text-gray-400 mb-1" />
-                        <span className="text-sm font-bold text-gray-700">
-                          {new Date(c.data_hora).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {c.pacientes?.nome || "Paciente Desconhecido"}
-                        </p>
-                        <p className="text-sm text-gray-500 mb-1">
-                          {c.tipo_atendimento || "Consulta Geral"}
-                        </p>
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 text-xs rounded-md">
-                          {c.status}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                      <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-md ${mov.status === 'Pago' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
+                        {mov.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
         </div>
-      )}
+
+      </div>
     </div>
   );
 }

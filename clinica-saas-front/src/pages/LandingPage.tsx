@@ -8,18 +8,20 @@ export default function LandingPage() {
   const [view, setView] = useState<'login' | 'recuperar'>('login');
 
   // Link para o WhatsApp da Empresa
-  const whatsappLink = "https://wa.me/5511999999999?text=Olá! Gostaria de saber mais sobre o Facility Health.";
+  const whatsappLink = "https://wa.me/5511914648331?text=Olá! Gostaria de saber mais sobre o Facility Health.";
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
       {/* HEADER */}
       <header className="fixed w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-40 px-12 py-5 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Stethoscope className="text-blue-600" size={32} />
-          <span className="text-2xl font-extrabold tracking-tighter">Facility Health</span>
-        </div>
+       <div className="flex items-center gap-2">
+    <img 
+      src="/logo.png" 
+      alt="Logo Facility Health" 
+      className="h-25 w-50" // Ajuste o 'h-10' para aumentar ou diminuir a logo
+    />
+  </div>
         <div className="flex gap-6 items-center">
-          <a href="#funcionalidades" className="text-gray-600 font-medium hover:text-blue-600 transition">Funcionalidades</a>
           <button 
             onClick={() => { setView('login'); setShowModal(true); }}
             className="bg-gray-900 text-white px-8 py-3 rounded-full font-bold hover:bg-gray-800 transition shadow-lg cursor-pointer"
