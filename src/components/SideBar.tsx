@@ -6,6 +6,7 @@ import {
   FileText,
   Settings,
   Stethoscope,
+  MessageSquare,
   LogOut,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -22,6 +23,7 @@ export default function Sidebar() {
   const menuItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Pacientes", path: "/pacientes", icon: Users },
+    { name: "Atendimento", path: "/atendimento", icon: MessageSquare },
     { name: "Agenda", path: "/agenda", icon: Calendar },
     { name: "Prontuários", path: "/prontuarios", icon: FileText },
     { name: "Faturamento", path: "/faturamento", icon: Wallet },

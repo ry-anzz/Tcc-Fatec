@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Configuracoes from './pages/Configuracoes';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Atendimento from './pages/Atendimento';
 import RecuperarSenha from './pages/RecuperarSenha';
 import Prontuario from './pages/Prontuario';
 import Pacientes from './pages/Pacientes';
@@ -57,6 +58,7 @@ function App() {
                  <Routes>
                    <Route path="/dashboard" element={<Dashboard />} />
                    <Route path="/pacientes" element={<Pacientes />} />
+                   <Route path="/atendimento" element={<Atendimento />} />
                    <Route path="/agenda" element={<Agenda />} />
                    <Route path="/prontuarios" element={<Prontuario />} />
                    <Route path="/Faturamento" element={<Faturamento />} />

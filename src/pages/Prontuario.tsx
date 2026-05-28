@@ -356,7 +356,6 @@ export default function ProntuarioEletronico() {
                 <User size={40} className="text-white" />
               </div>
               <h3 className="font-extrabold text-2xl mb-1">{paciente.nome}</h3>
-              <p className="text-blue-200 text-sm font-medium mb-6">Paciente Ativo</p>
               
               <div className="space-y-4 pt-6 border-t border-white/20">
                 <div className="flex items-center gap-3">
