@@ -117,8 +117,8 @@ export default function RecuperarSenha() {
             <KeyRound className="absolute left-4 top-4 text-gray-400" size={20} />
             <input 
               type="text" 
-              placeholder="Código de 6 dígitos" 
-              maxLength={6}
+              placeholder="Código de 8 dígitos" 
+              maxLength={8}
               className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-600 text-lg transition text-center tracking-[0.5em] font-bold" 
               value={codigo}
               onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} // Aceita só números
